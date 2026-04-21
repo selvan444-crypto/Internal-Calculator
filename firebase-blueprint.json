@@ -1,0 +1,80 @@
+{
+  "entities": {
+    "users": {
+      "title": "User Profile",
+      "description": "User profile data containing registration and role info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "registerNo": { "type": "string" },
+        "department": { "type": "string" },
+        "yearSem": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "registerNo", "department", "yearSem", "role", "createdAt"]
+    },
+    "marks": {
+      "title": "Mark Record",
+      "description": "Calculation records saved by users",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "registerNo": { "type": "string" },
+        "department": { "type": "string" },
+        "yearSem": { "type": "string" },
+        "courseType": { "type": "string" },
+        "internalMarks": { "type": "number" },
+        "eseMarks": { "type": "number" },
+        "totalMarks": { "type": "number" },
+        "scores": { "type": "object" },
+        "eseScore": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "courseType", "internalMarks", "totalMarks", "createdAt"]
+    },
+    "login_logs": {
+      "title": "Login Log",
+      "description": "Records of user login events",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "registerNo": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "userAgent": { "type": "string" }
+      },
+      "required": ["userId", "timestamp"]
+    },
+    "admins": {
+      "title": "Admin Permission",
+      "description": "List of admin UIDs",
+      "type": "object",
+      "properties": {
+        "exists": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "users",
+      "description": "Profiles for all registered users"
+    },
+    "marks/{markId}": {
+      "schema": "marks",
+      "description": "Calculation records"
+    },
+    "admins/{adminId}": {
+      "schema": "admins",
+      "description": "Admin UIDs"
+    },
+    "login_logs/{logId}": {
+      "schema": "login_logs",
+      "description": "User login session history"
+    }
+  }
+}

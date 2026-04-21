@@ -1,0 +1,6 @@
+{
+  "name": "Internal Mark Generator",
+  "description": "A precise internal mark calculator for THEORY, TCPL, and TCPR courses based on defined weightage rules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

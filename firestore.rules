@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'; 
+    }
+    function isWhiteListedAdmin(regNo) {
+      return regNo in [
+        '927625BSC059', '927624BCS011', '927625BEC047', 
+        '927625BIT090', '927625BCS127', '927625BSC024', '927625BSC005'
+      ];
+    }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isOwner(adminId) && isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        isWhiteListedAdmin(get(/databases/$(database)/documents/users/$(request.auth.uid)).data.registerNo);
+    }
+
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['uid', 'email', 'displayName', 'registerNo', 'department', 'yearSem', 'role', 'createdAt'])
+          && data.keys().size() == 8
+          && data.uid == request.auth.uid
+          && data.role in ['user', 'admin']
+          && data.registerNo is string && data.registerNo.size() <= 100
+          && data.department is string && data.department.size() <= 100
+          && data.yearSem is string && data.yearSem.size() <= 100;
+      }
+
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (
+        request.resource.data.role == 'user' || 
+        (request.resource.data.role == 'admin' && isWhiteListedAdmin(request.resource.data.registerNo))
+      );
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'registerNo', 'department', 'yearSem', 'role', 'updatedAt']) && (
+          request.resource.data.role == resource.data.role ||
+          (request.resource.data.role == 'admin' && isWhiteListedAdmin(resource.data.registerNo))
+        )
+      );
+    }
+
+    match /login_logs/{logId} {
+      function isValidLog(data) {
+        return data.keys().hasAll(['userId', 'displayName', 'registerNo', 'timestamp', 'userAgent'])
+          && data.userId == request.auth.uid
+          && data.timestamp == request.time;
+      }
+      allow create: if isSignedIn() && isValidLog(request.resource.data);
+      allow read, delete: if isAdmin();
+    }
+
+    match /marks/{markId} {
+      function isValidMark(data) {
+        return data.keys().hasAll(['userId', 'userName', 'registerNo', 'department', 'yearSem', 'courseType', 'internalMarks', 'eseMarks', 'totalMarks', 'scores', 'eseScore', 'createdAt', 'updatedAt'])
+        && data.userId == request.auth.uid
+        && data.courseType in ['THEORY', 'TCPL', 'TCPR']
+        && data.internalMarks is number
+        && data.totalMarks is number;
+      }
+
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && isValidMark(request.resource.data) && request.resource.data.createdAt == request.time;
+      allow update: if false; // Marks are immutable for audit
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+  }
+}
